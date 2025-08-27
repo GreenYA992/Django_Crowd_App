@@ -9,6 +9,8 @@ from collects.models import Collect
 # noinspection PyUnresolvedReferences
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+# noinspection PyUnresolvedReferences
+from django.db.models import F
 
 User = get_user_model()
 
@@ -52,6 +54,8 @@ class Payment(models.Model):
         super().save(*args, **kwargs)
 
         # Если это новый платеж - обновляем сумму сбора
-        if is_new:
-            self.collect.current_amount += self.amount
-            self.collect.save()
+        if is_new and self.amount > 0:
+            # Используем атомарное обновление
+            Collect.objects.filter(id=self.collect.id).update(
+                current_amount=F('current_amount') + self.amount
+            )
