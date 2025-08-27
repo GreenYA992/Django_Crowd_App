@@ -8,8 +8,14 @@ from django.core.validators import MinValueValidator
 from django.utils import timezone
 # noinspection PyUnresolvedReferences
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 User = get_user_model()
+
+def validate_future_date(value):
+    """Валидатор для проверки, что дата в будущем"""
+    if value <= timezone.now():
+        raise ValidationError('Дата завершения должна быть в будущем')
 
 class Occasion(models.TextChoices):
     BIRTHDAY = 'birthday', 'День рождения'
@@ -37,20 +43,23 @@ class Collect(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(0)]
+        validators=[MinValueValidator(Decimal('0'))]
     )
     current_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=0,
-        validators=[MinValueValidator(0)]
+        validators=[MinValueValidator(Decimal('0'))]
     )
     cover_image = models.ImageField(
         upload_to='collects/covers/',
         null=True,
         blank=True
     )
-    end_datetime = models.DateTimeField()
+    end_datetime = models.DateTimeField(
+        validators=[validate_future_date],
+        help_text='Дата и время завершения сбора'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

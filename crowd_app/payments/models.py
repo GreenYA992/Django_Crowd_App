@@ -8,6 +8,7 @@ from django.core.validators import MinValueValidator
 from collects.models import Collect
 # noinspection PyUnresolvedReferences
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -25,7 +26,7 @@ class Payment(models.Model):
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(1)]
+        validators=[MinValueValidator(Decimal(1))]
     )
     comment = models.TextField(blank=True)
     is_anonymous = models.BooleanField(default=False)
@@ -42,3 +43,15 @@ class Payment(models.Model):
             raise ValidationError('Сумма платежа должна быть положительной')
         if not self.collect.is_active:
             raise ValidationError('Нельзя сделать платеж в завершенный сбор')
+
+    def save(self, *args, **kwargs):
+        # Если это новая запись (не обновление)
+        is_new = self._state.adding
+
+        # Сначала сохраняем платеж
+        super().save(*args, **kwargs)
+
+        # Если это новый платеж - обновляем сумму сбора
+        if is_new:
+            self.collect.current_amount += self.amount
+            self.collect.save()
